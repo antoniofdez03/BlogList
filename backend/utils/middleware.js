@@ -1,13 +1,4 @@
-const morgan = require('morgan')
 const logger = require('./logger')
-
-morgan.token('body', (request) =>
-  request.method === 'POST' ? JSON.stringify(request.body) : ''
-)
-
-const morganLogger = morgan(
-  ':method :url :status :res[content-length] - :response-time ms :body'
-)
 
 const requestLogger = (request, response, next) => {
     logger.info('Method: ', request.method)
@@ -38,7 +29,6 @@ const unknownEndpoint = (request, response) => {
 }
 
 module.exports = {
-    morganLogger,
     requestLogger,
     errorHandler,
     unknownEndpoint
