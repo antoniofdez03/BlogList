@@ -52,6 +52,24 @@ describe('POST', () => {
         expect(response.body).toHaveLength(initialUsers.length + 1)
     })
 
+    test('an user with existing username', async () => {
+        const newUser = {
+            username: "Antoniofdez03",
+            name: "Antonio",
+            password: "12345"
+        }
+
+        const postResponse = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400)
+            .expect('Content-Type', /application\/json/)
+
+        const getResponse = await api.get('/api/users')
+        expect(getResponse.body).toHaveLength(initialUsers.length)
+        expect(postResponse.body.error).toContain('duplicate key error')
+    })
+
     test('an empty user', async () => {
         const newUser = {}
 
@@ -65,6 +83,40 @@ describe('POST', () => {
         expect(response.body).toHaveLength(initialUsers.length)
     })
 
+    test('an user with empty username', async () => {
+        const newUser = {
+            name: "Antonio",
+            password: "12345"
+        }
+
+        const postResponse = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400)
+            .expect('Content-Type', /application\/json/)
+
+        const getResponse = await api.get('/api/users')
+        expect(getResponse.body).toHaveLength(initialUsers.length)
+        expect(postResponse.body.error).toContain('`username` is required')
+    })
+
+    test('an user with empty password', async () => {
+        const newUser = {
+            username: "Anto",
+            name: "Antonio"
+        }
+
+        const postResponse = await api
+            .post('/api/users')
+            .send(newUser)
+            .expect(400)
+            .expect('Content-Type', /application\/json/)
+
+        const getResponse = await api.get('/api/users')
+        expect(getResponse.body).toHaveLength(initialUsers.length)
+        expect(postResponse.body.error).toContain('password must be at least 3 characters long')
+    })
+
     test('an user with invalid username', async () => {
         const newUser = {
             username: "An",
@@ -72,14 +124,15 @@ describe('POST', () => {
             password: "12345"
         }
 
-        await api
+        const postResponse = await api
             .post('/api/users')
             .send(newUser)
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        const response = await api.get('/api/users')
-        expect(response.body).toHaveLength(initialUsers.length)
+        const getResponse = await api.get('/api/users')
+        expect(getResponse.body).toHaveLength(initialUsers.length)
+        expect(postResponse.body.error).toContain('Username must be at least 3 characters long')
     })
 
     test('an user with invalid password', async () => {
@@ -89,18 +142,19 @@ describe('POST', () => {
             password: "12"
         }
 
-        await api
+        const postResponse = await api
             .post('/api/users')
             .send(newUser)
             .expect(400)
             .expect('Content-Type', /application\/json/)
 
-        const response = await api.get('/api/users')
-        expect(response.body).toHaveLength(initialUsers.length)
+        const getResponse = await api.get('/api/users')
+        expect(getResponse.body).toHaveLength(initialUsers.length)
+        expect(postResponse.body.error).toContain('password must be at least 3 characters long')
     })
 })
 
-afterAll(() => {
-    mongoose.connection.close()
+afterAll( async () => {
+    await mongoose.connection.close()
     server.close()
 })
