@@ -8,20 +8,27 @@ const requestLogger = (request, response, next) => {
     next()
 }
 
+const ERROR_HANDLERS = {
+  CastError: res => 
+    res.status(400).send({error: 'id used is malformed'}),
+
+  ValidationError: (res, error) => 
+    res.status(409).send({ error: error.message}),
+
+  JsonWebTokenError: res => 
+    res.status(401).json({error: 'token missing or invalid'}),
+
+  TokenExpiredError: res => 
+    res.status(401).json({error: 'Token expired'}),
+
+  defaultError: res => 
+    res.status(500).end()
+}
+
 const errorHandler = (error, request, response, next) => {
-  console.error(error)
   console.log(error.name)
-  
-  if(error.name === 'CastError'){
-    response.status(400).send({
-      error: 'id used is malformed'
-    })
-  }else if (error.name === 'ValidationError') {
-    return response.status(400).json({ error: error.message })
-  }
-  else{
-    response.status(500).end()
-  }
+  const handler = ERROR_HANDLERS[error.name] || ERROR_HANDLERS.defaultError
+  handler(response, error)
 }
 
 const unknownEndpoint = (request, response) => {

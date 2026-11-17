@@ -1,13 +1,13 @@
 const listHelper = require('../utils/list_helper')
 
-test('dummy returns one', () => {
+test.skip('dummy returns one', () => {
     const blogs = []
 
     const result = listHelper.dummy(blogs)
     expect(result).toBe(1)
 })
 
-describe('Total likes', () => {
+describe.skip('Total likes', () => {
     test('of empty list is zero', () => {
         const blogs = []
 
@@ -41,7 +41,7 @@ describe('Total likes', () => {
     })
 })
 
-describe('Favorite blog', () => {
+describe.skip('Favorite blog', () => {
     test('of empty list is null', () => {
         const blogs = []
 

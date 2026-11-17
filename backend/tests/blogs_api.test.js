@@ -2,18 +2,40 @@ const app = require('../app')
 const supertest = require('supertest')
 const mongoose = require('mongoose')
 const server = require('../index')
+const bcrypt = require('bcrypt')
+const userExtractor = require('../utils/userExtractor')
 const Blog = require('../models/Blog')
-const { initialBlogs } = require('../utils/list_helper')
+const User = require('../models/User')
 
 const api = supertest(app)
 
-beforeEach(async () => {
-    await Blog.deleteMany({})
+const initialBlogs = [
+  { title: 'First blog', url: 'url', likes: 3 },
+  { title: 'Second blog', url: 'url', likes: 5 }
+]
 
-    for( let blog of initialBlogs) {
-        const blogObject = new Blog(blog)
-        await blogObject.save()
-    }
+let testUser
+let token
+
+beforeEach(async () => {
+  await Blog.deleteMany({})
+  await User.deleteMany({})
+
+  const passwordHash = await bcrypt.hash('1234', 10)
+  testUser = await new User({
+    username: 'Antoniofdez03',
+    name: 'Antonio',
+    passwordHash
+  }).save()
+
+  const blogs = initialBlogs.map(blog => new Blog({ ...blog, author: testUser._id }))
+  await Promise.all(blogs.map(blog => blog.save()))
+
+  const loginResponse = await api
+    .post('/api/login')
+    .send({ username: 'Antoniofdez03', password: '1234' })
+
+  token = loginResponse.body.token
 })
 
 describe('GET', () => {
@@ -49,16 +71,53 @@ describe('GET', () => {
 })
 
 describe('POST', () => {
+    test('a blog without token', async () => {
+        let newBlog = {
+            "title": "new blog",
+            "url": "url",
+            "likes": 2
+        }
+
+        const postResponse = await api
+            .post('/api/blogs')
+            .send(newBlog)
+            .expect(401)
+            .expect('Content-Type', /application\/json/)
+        
+        expect(postResponse.body.error).toContain('token missing or invalid')
+        const getResponse = await api.get('/api/blogs')
+        expect(getResponse.body).toHaveLength(initialBlogs.length)
+    })
+
+    test('a blog with invalid token', async () => {
+        let newBlog = {
+            "title": "new blog",
+            "url": "url",
+            "likes": 2
+        }
+
+        const postResponse = await api
+            .post('/api/blogs')
+            .set('Authorization', `Bearer 1234`)
+            .send(newBlog)
+            .expect(401)
+            .expect('Content-Type', /application\/json/)
+        
+        expect(postResponse.body.error).toContain('token missing or invalid')
+        const getResponse = await api.get('/api/blogs')
+        expect(getResponse.body).toHaveLength(initialBlogs.length)
+    })
+
     test('a valid blog', async () => {
         let newBlog = {
             "title": "new blog",
-            "author": "Antonio",
             "url": "url",
             "likes": 2
         }
 
         await api
             .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlog)
             .expect(201)
             .expect('Content-Type', /application\/json/)
@@ -73,12 +132,12 @@ describe('POST', () => {
     test('a blog without likes', async () => {
         let newBlog = {
             title: "new blog",
-            author: "Antonio",
             url: "url",
         }
 
         const blog = await api
             .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlog)
             .expect(201)
             .expect('Content-Type', /application\/json/)
@@ -94,13 +153,13 @@ describe('POST', () => {
 
     test(' a blog without title', async () => {
         let newBlog = {
-            author: "Antonio",
             url: "url",
             likes: 3
         }
 
         await api
             .post('/api/blogs')
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlog)
             .expect(400)
             .expect('Content-Type', /application\/json/)
@@ -117,6 +176,7 @@ describe('DELETE', () => {
         const blogToDelete = firstResponse.body[0]
         await api
             .delete(`/api/blogs/${blogToDelete.id}`)
+            .set('Authorization', `Bearer ${token}`)
             .expect(204)
         
         const secondResponse = await api.get('/api/blogs')      
@@ -126,6 +186,7 @@ describe('DELETE', () => {
     test('a blog that doesnt exist can be deleted', async () => {
         await api
             .delete(`/api/blogs/1`)
+            .set('Authorization', `Bearer ${token}`)
             .expect(400)
         
         const blogs = await api.get('/api/blogs')
@@ -140,18 +201,18 @@ describe('PUT', () => {
 
         const newBlogData = {
             title: "first blog updated",
-            author: "Antonio",
             url: "url",
             likes: 10
         }
 
         const blog = await api
             .put(`/api/blogs/${blogToUpdate.id}`)
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlogData)
             .expect(200)
             .expect('Content-Type', /application\/json/)
 
-        expect(blog.body).toEqual({ ...newBlogData, id: blogToUpdate.id })
+        expect(blog.body).toEqual({ ...newBlogData, author: testUser._id.toString(), id: blogToUpdate.id })
     })
 
     test('an invalid blog cant be updated', async () => {
@@ -165,6 +226,7 @@ describe('PUT', () => {
 
         await api
             .put(`/api/blogs/2`)
+            .set('Authorization', `Bearer ${token}`)
             .send(newBlogData)
             .expect(400)
             .expect('Content-Type', /application\/json/)

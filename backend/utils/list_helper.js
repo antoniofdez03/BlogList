@@ -1,18 +1,3 @@
-const initialBlogs = [
-        {
-            title: "First blog",
-            author: "Antonio",
-            url: "url",
-            likes: 3
-        },
-        {
-            title: "Second blog",
-            author: "Ricardo",
-            url: "url",
-            likes: 5
-        }
-    ]
-
 const dummy = (blogs) => {
     return 1
 }
@@ -32,7 +17,6 @@ const favoriteBlog = (blogs) => {
 }
 
 module.exports = {
-    initialBlogs,
     dummy,
     totalLikes,
     favoriteBlog
